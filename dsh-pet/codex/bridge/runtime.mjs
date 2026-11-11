@@ -1,4 +1,3 @@
-import { spawn } from 'node:child_process';
 import { createCodexWatcher } from '../events/watcher.mjs';
 
 const route = '/dsh-pet-7340';
@@ -15,22 +14,8 @@ export async function startCodexBridge({ port, token, logger }) {
       body: body ? JSON.stringify(body) : undefined,
       signal: AbortSignal.timeout(3000),
     });
-  const notify = (notice) => {
-    if (process.platform !== 'darwin' || !['complete', 'error', 'approval'].includes(notice.kind)) return;
-    const escaped = (value) => JSON.stringify(String(value).slice(0, 180));
-    const child = spawn(
-      '/usr/bin/osascript',
-      ['-e', `display notification ${escaped(notice.body)} with title ${escaped(notice.title)}`],
-      {
-        stdio: 'ignore',
-        windowsHide: true,
-      },
-    );
-    child.on('error', () => logger.warn('Codex 系统通知未能显示'));
-    child.unref();
-  };
   const watcher = createCodexWatcher({
-    onChange(snapshot, notice) {
+    onChange(snapshot) {
       if (stopped) return;
       pending = pending
         .then(async () => {
@@ -45,7 +30,6 @@ export async function startCodexBridge({ port, token, logger }) {
             lastUsage = usage;
             await send('POST', '/codex-usage', snapshot.usage);
           }
-          if (notice) notify(notice);
         })
         .catch(() => logger.warn('Codex 会话状态同步失败，稍后重试'));
     },

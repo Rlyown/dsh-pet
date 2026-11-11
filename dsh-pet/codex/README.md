@@ -32,7 +32,7 @@ Launching Electron from a sandboxed Codex process aborts on macOS. dsh-pet there
 
 If Shortcuts reports that scripting actions are disabled, enable **Allow Running Scripts** in Shortcuts > Settings > Advanced. The toggle script disables dsh-pet's own Electron visibility hotkey so that the macOS shortcut is the only global binding; it stores this preference in `~/.dsh/dsh-pet/desktop-shortcut.json`.
 
-The local session observer updates Codex activity and quota while the pet is running. It also sends macOS notifications on completion, errors, and approval requests.
+The local session observer updates Codex activity and quota while the pet is running. It does not send macOS task notifications; Codex handles its own notifications.
 
 ### Show or hide the desktop pet
 
