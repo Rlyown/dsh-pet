@@ -1,10 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-  <!-- A small monochrome version of the whale on Ciallo's apron. -->
-  <mask id="eye">
-    <rect width="64" height="64" fill="#fff"/>
-    <circle cx="25" cy="31" r="2.5" fill="#000"/>
-  </mask>
-  <path fill="#000" mask="url(#eye)" d="M12 33c0-10 8-17 19-17 10 0 17 6 19 14 3-3 6-5 11-5 0 5-2 9-6 12 4 3 6 7 6 12-5 0-9-3-13-7-4 5-10 8-18 8-11 0-19-7-19-17 0-1 0-2 1-3z"/>
-  <path fill="none" stroke="#000" stroke-width="3.5" stroke-linecap="round" d="M28 12c-2-2-2-4-1-6m6 7c1-3 3-4 5-5"/>
-  <path fill="none" stroke="#000" stroke-width="3.2" stroke-linecap="round" d="M16 38c5 4 11 5 17 3"/>
+  <!-- Ciallo's maid frill, side bow, and wink; no text or background at menu bar size. -->
+  <g fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke-width="4.5" d="M16 48c-4-8-4-18 0-25 4-8 11-12 19-12 9 0 16 6 18 16 1 8-1 15-5 21"/>
+    <path stroke-width="3.7" d="M19 20c-3-2-3-6 0-8 3-2 6 0 7 3 0-4 3-7 6-7s5 3 5 6c2-4 5-5 8-3 3 2 3 5 1 8"/>
+    <path stroke-width="4.2" d="M22 30c4-5 8-7 14-7-2 7-4 11-8 14"/>
+    <path stroke-width="3.5" d="M39 42c3-2 6-1 8 1"/>
+  </g>
+  <circle cx="25" cy="42" r="2.7" fill="#000"/>
+  <path fill="#000" d="M49 22c4-5 9-6 11-3 1 2-1 5-5 6 4 1 6 4 5 7-2 3-7 2-11-4l-3-3z"/>
+  <circle cx="49" cy="25" r="2.4" fill="#000"/>
 </svg>
