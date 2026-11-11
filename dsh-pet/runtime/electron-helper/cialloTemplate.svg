@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- A small monochrome version of the whale on Ciallo's apron. -->
+  <mask id="eye">
+    <rect width="64" height="64" fill="#fff"/>
+    <circle cx="25" cy="31" r="2.5" fill="#000"/>
+  </mask>
+  <path fill="#000" mask="url(#eye)" d="M12 33c0-10 8-17 19-17 10 0 17 6 19 14 3-3 6-5 11-5 0 5-2 9-6 12 4 3 6 7 6 12-5 0-9-3-13-7-4 5-10 8-18 8-11 0-19-7-19-17 0-1 0-2 1-3z"/>
+  <path fill="none" stroke="#000" stroke-width="3.5" stroke-linecap="round" d="M28 12c-2-2-2-4-1-6m6 7c1-3 3-4 5-5"/>
+  <path fill="none" stroke="#000" stroke-width="3.2" stroke-linecap="round" d="M16 38c5 4 11 5 17 3"/>
+</svg>

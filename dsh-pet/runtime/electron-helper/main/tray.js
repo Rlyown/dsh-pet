@@ -54,17 +54,19 @@ function createTray({
     });
   }
 
-  /** 托盘图标：包内 logo 缩到 16×16（macOS 要模板图，否则深色菜单栏下看不见） */
+  /** macOS 使用透明单色模板图及 @2x 同名资源；其他平台沿用彩色 logo。 */
   function trayIcon() {
-    const file = path.join(helperDir, '..', '..', 'assets', 'logo.png');
+    const file = platform.templateImage
+      ? path.join(helperDir, 'cialloTemplate.png')
+      : path.join(helperDir, '..', '..', 'assets', 'logo.png');
     let img = nativeImage.createFromPath(file);
     if (img.isEmpty()) {
       // 读不到图标 = 托盘不可见但菜单逻辑照跑，最难查的一种坏法：必须留下能定位的日志
       console.error('[dsh-pet-desktop-helper] tray icon missing or unreadable: ' + file);
       return img;
     }
-    img = img.resize({ width: 16, height: 16 });
     if (platform.templateImage) img.setTemplateImage(true);
+    else img = img.resize({ width: 16, height: 16 });
     return img;
   }
 

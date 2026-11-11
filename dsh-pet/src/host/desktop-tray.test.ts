@@ -33,6 +33,7 @@ function harness(options: {
   appMode?: boolean;
   isBridge?: boolean;
   canQuit?: boolean;
+  templateImage?: boolean;
   pets?: Array<Record<string, unknown>>;
 }) {
   const requests: string[] = [];
@@ -40,6 +41,9 @@ function harness(options: {
   const quits: string[] = [];
   const menus: MenuItem[][] = [];
   const visibilityCalls: string[] = [];
+  const iconPaths: string[] = [];
+  let templateMarks = 0;
+  let resizes = 0;
   let petsVisible = true;
 
   class FakeTray {
@@ -57,7 +61,17 @@ function harness(options: {
     Tray: FakeTray,
     Menu: { buildFromTemplate: (template: MenuItem[]) => ({ template }) },
     nativeImage: {
-      createFromPath: () => ({ isEmpty: () => false, resize: () => ({ setTemplateImage: () => {} }) }),
+      createFromPath: (file: string) => {
+        iconPaths.push(file);
+        return {
+          isEmpty: () => false,
+          setTemplateImage: () => templateMarks++,
+          resize: () => {
+            resizes++;
+            return { setTemplateImage: () => templateMarks++ };
+          },
+        };
+      },
     },
     hostRequest: async (method: string, url: string, body?: string) => {
       requests.push(method + ' ' + url);
@@ -74,7 +88,7 @@ function harness(options: {
     isBridge: options.isBridge ?? false,
     appMode: options.appMode ?? false,
     petRoute: '/dsh-pet-7340',
-    platform: { templateImage: false, leftClickPopsMenu: false },
+    platform: { templateImage: options.templateImage ?? false, leftClickPopsMenu: false },
     helperDir: '.',
     toggleVisibility: () => {
       petsVisible = !petsVisible;
@@ -84,7 +98,16 @@ function harness(options: {
   };
 
   const tray = createTray(deps);
-  return { tray, requests, bodies, quits, menus, visibilityCalls };
+  return {
+    tray,
+    requests,
+    bodies,
+    quits,
+    menus,
+    visibilityCalls,
+    iconPaths,
+    iconState: () => ({ templateMarks, resizes }),
+  };
 }
 
 /** 取最后一次构建出来的菜单模板。 */
@@ -95,6 +118,16 @@ function lastMenu(menus: MenuItem[][]): MenuItem[] {
 }
 
 describe('createTray —— 勾选与点击', () => {
+  test('macOS 菜单栏使用透明模板图，并保留原始尺寸供 Retina 资源匹配', async () => {
+    const { tray, iconPaths, iconState } = harness({
+      templateImage: true,
+      pets: [{ id: 'main', display: 'desktop' }],
+    });
+    await tray.start();
+    assert.equal(iconPaths[0]?.endsWith('cialloTemplate.png'), true);
+    assert.deepEqual(iconState(), { templateMarks: 1, resizes: 0 });
+  });
+
   test('菜单栏显示/隐藏入口和全局快捷键共用同一切换动作', async () => {
     const { tray, menus, visibilityCalls } = harness({ pets: [{ label: 'main', id: 'main', display: 'both' }] });
     await tray.start();
@@ -104,7 +137,10 @@ describe('createTray —— 勾选与点击', () => {
     toggle.click();
     assert.deepEqual(visibilityCalls, ['hide']);
     await new Promise((resolve) => setTimeout(resolve, 10));
-    assert.equal(lastMenu(menus).some((item) => item.label?.includes('显示桌面宠物（')), true);
+    assert.equal(
+      lastMenu(menus).some((item) => item.label?.includes('显示桌面宠物（')),
+      true,
+    );
   });
 
   test('勾选状态来自配置：含 desktop / both 的两只被打勾', async () => {
