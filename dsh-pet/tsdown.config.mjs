@@ -71,9 +71,22 @@ export default defineConfig([
     // tsdown 默认把 dependencies/peerDependencies 全部外部化（本包那三个 DSH 专有包正是
     // peerDependencies），所以这里必须先 noExternal 把它们拉回打包图，下面的 alias 才轮得到生效；
     // 否则产物里留下裸 import，在没有 DSH 的环境里 ERR_MODULE_NOT_FOUND。
-    noExternal: [/^@deepseek-ai\/(?:dsh-home-paths|dsh-credentials|dsh-llm)$/],
+    // Codex installs this plugin as a flat cache package without node_modules. Bundle every
+    // runtime dependency used by the standalone entry so the MCP child can start directly
+    // from that cache (the app entry below already follows the same rule).
+    noExternal: [
+      /^@deepseek-ai\/(?:dsh-home-paths|dsh-credentials|dsh-llm)$/,
+      /^zod$/,
+      /^openai$/,
+      /^@anthropic-ai\/sdk$/,
+      /^@andresaya\/edge-tts$/,
+      // The first Codex launch provisions Electron, so this path must work from the
+      // node_modules-free plugin cache too (these imports are reached dynamically).
+      /^@electron\/get$/,
+      /^@electron-internal\/extract-zip$/,
+    ],
     // 除三个替身外，其余 @deepseek-ai/* 仍视为宿主提供（负向断言）
-    external: [/^@electron\//, /^node:/, /^@deepseek-ai\/(?!dsh-home-paths$|dsh-credentials$|dsh-llm$)/],
+    external: [/^@electron\/(?!get$)/, /^node:/, /^@deepseek-ai\/(?!dsh-home-paths$|dsh-credentials$|dsh-llm$)/],
     alias: {
       '@deepseek-ai/dsh-home-paths': shim('dsh-home-paths'),
       '@deepseek-ai/dsh-credentials': shim('dsh-credentials'),

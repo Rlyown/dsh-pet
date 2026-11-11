@@ -1,0 +1,6 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "dsh-pet-codex",
+  "version": "0.1.6",
+  "description": "Bring the full dsh-pet desktop companion into Codex with local session observation and control tools."
+}

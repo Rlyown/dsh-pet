@@ -36,6 +36,8 @@ function createTray({
   petRoute,
   platform,
   helperDir,
+  toggleVisibility = () => false,
+  arePetsVisible = () => false,
 }) {
   const isDesktopDisplay = (display) => display === 'desktop' || display === 'both';
 
@@ -107,6 +109,20 @@ function createTray({
       .filter((pet) => pet.id);
     if (!pets.length) return null; // 配置里没有任何宠物：没有可切换的对象，不建托盘
     const canQuit = await canQuitSelf();
+    const accelerator =
+      process.env.DSH_PET_VISIBILITY_ACCELERATOR === undefined
+        ? 'Control+Alt+P'
+        : process.env.DSH_PET_VISIBILITY_ACCELERATOR;
+    const visibilityKey = accelerator
+      ? process.platform === 'darwin'
+        ? accelerator
+            .replace(/Command|Cmd|Super|Meta/g, '⌘')
+            .replace(/Control|Ctrl/g, '⌃')
+            .replace(/Alt|Option/g, '⌥')
+            .replace(/Shift/g, '⇧')
+            .replaceAll('+', '')
+        : accelerator
+      : '';
     const quitApp = () => {
       if (!isBridge || appMode) {
         app.quit();
@@ -124,6 +140,14 @@ function createTray({
         checked: isDesktopDisplay(pet.display),
         click: () => traySetPetDisplay(pet.id, toggleDisplay(pet.display)),
       })),
+      { type: 'separator' },
+      {
+        label: `${arePetsVisible() ? '隐藏' : '显示'}桌面宠物${visibilityKey ? `（${visibilityKey}）` : ''}`,
+        click: () => {
+          toggleVisibility();
+          setTimeout(() => void refreshTray(), 0);
+        },
+      },
       ...(canQuit ? [{ type: 'separator' }, { label: '退出', click: quitApp }] : []),
     ]);
   }

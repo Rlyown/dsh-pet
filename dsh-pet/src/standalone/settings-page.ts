@@ -20,6 +20,7 @@ import { bootScript } from './settings-page/script/boot.ts';
 import { coreScript } from './settings-page/script/core.ts';
 import { globalsScript } from './settings-page/script/globals.ts';
 import { modelPickerScript } from './settings-page/script/model-picker.ts';
+import { taskScript } from './settings-page/script/task.ts';
 import { overlayScript } from './settings-page/script/overlay.ts';
 import { petCardScript } from './settings-page/script/pet-card.ts';
 import { petsScript } from './settings-page/script/pets.ts';
@@ -52,6 +53,7 @@ export const settingsScript = [
   globalsScript(),
   modelPickerScript(),
   aiScript(),
+  taskScript(),
   bootScript(),
   'boot();',
   '})();',

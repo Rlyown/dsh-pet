@@ -71,7 +71,11 @@
     "assets/logo.png",
     "assets/main-character.png",
     "scripts/ensure-electron.mjs",
-    "cordis.patch.yml"
+    "cordis.patch.yml",
+    "plugin.json",
+    "mcp.json",
+    "skills",
+    "codex"
   ],
   "scripts": {
     "bundle": "tsdown",

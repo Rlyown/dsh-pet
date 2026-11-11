@@ -43,6 +43,7 @@ const endpoint = z
 /** 设置补丁的契约：未知字段一律拒绝。 */
 const settingsSchema = z
   .object({
+    source: z.enum(['codex', 'custom']).optional(),
     protocol: z.enum(['openai-compatible', 'anthropic']).optional(),
     baseUrl: endpoint.optional(),
     model: z.string().max(200).optional(),
@@ -66,6 +67,7 @@ export function validateSettings(input: unknown): z.infer<typeof settingsSchema>
 
 /** 可出现在响应里的字段白名单。 */
 const publicNames = [
+  'source',
   'protocol',
   'baseUrl',
   'model',

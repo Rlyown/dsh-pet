@@ -19,6 +19,7 @@ export const settingsPage = `<!doctype html>
 <div class="brand"><img class="brandLogo" src="/standalone-ai/icon.png" alt=""><span>桌宠</span></div>
 <nav class="nav" aria-label="设置分区"><div class="navList" role="tablist">
 <button type="button" class="navCell" role="tab" id="tab-chat" data-tab="chat" data-title="对话" aria-controls="panel-chat" aria-selected="true"><svg class="navGlyph" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3.4h10a1.1 1.1 0 0 1 1.1 1.1v5.6A1.1 1.1 0 0 1 13 11.2H8.2L5 13.6v-2.4H3a1.1 1.1 0 0 1-1.1-1.1V4.5A1.1 1.1 0 0 1 3 3.4Z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg><span class="navLabel">对话</span></button>
+<button type="button" class="navCell" role="tab" id="tab-task" data-tab="task" data-title="任务" aria-controls="panel-task" aria-selected="false"><span class="navLabel">任务</span></button>
 <button type="button" class="navCell" role="tab" id="tab-config" data-tab="config" data-title="配置" aria-controls="panel-config" aria-selected="false"><svg class="navGlyph" viewBox="0 0 16 16" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M2.6 4.6h10.8M2.6 11.4h10.8"/><circle cx="6.2" cy="4.6" r="1.6" fill="currentColor" stroke="none"/><circle cx="9.8" cy="11.4" r="1.6" fill="currentColor" stroke="none"/></g></svg><span class="navLabel">配置</span></button>
 </div></nav>
 <div class="sideFoot">独立模式</div>
@@ -32,13 +33,17 @@ export const settingsPage = `<!doctype html>
 <div class="footer"><p class="status" id="pet-status" role="status" aria-live="polite"></p><button class="btn primary" id="pet-save" type="button" disabled>保存</button></div>
 <form id="settings" aria-describedby="privacy">
 <div class="card"><div class="cardHead"><h2 class="cardTitle">模型连接</h2></div>
-<p class="cardHint">独立模式自己连服务商，不经过 DSH；所有配置只保存在当前机器。</p>
+<p class="cardHint">默认使用本机已登录的 Codex CLI；也可以切换到单独配置的模型。</p>
+<div class="field"><label for="source">生成来源</label><select id="source" name="source"><option value="codex">Codex CLI（默认）</option><option value="custom">单独配置模型</option></select></div>
+<div id="custom-model-fields" hidden>
 <div class="field"><span class="fieldLabel" id="protocol-label">接口协议</span><div id="protocol-host"></div></div>
 <div class="field"><label for="baseUrl">接口地址（Base URL）</label><input id="baseUrl" name="baseUrl" type="url" placeholder="https://example.com/v1" maxlength="2048" spellcheck="false" aria-describedby="endpoint-note"><p class="fieldHint" id="endpoint-note">服务商提供的基础接口地址，支持 HTTP 与 HTTPS，通常以 /v1 结尾。不要把密钥放进地址。</p></div>
 <div class="field"><label for="model">模型名称</label><div class="combo" id="model-combo"><input id="model" name="model" type="text" maxlength="200" placeholder="填写或拉取服务商的模型 ID，例如 deepseek-chat" spellcheck="false" aria-describedby="model-note"><button id="model-toggle" class="comboToggle" type="button" aria-label="拉取并选择模型" aria-haspopup="listbox" aria-expanded="false"></button></div><p class="fieldHint" id="model-note">可以直接手填；点右侧箭头向端点拉取可用列表后选择。拉取只用本次填写的地址与密钥，不会保存。</p><p class="status" id="model-result" role="status" aria-live="polite"></p></div>
 <div class="field"><label for="apiKey">API 密钥 <span class="hintInline" id="key-state">尚未读取</span></label><input id="apiKey" name="apiKey" type="password" autocomplete="new-password" maxlength="8192" placeholder="留空保留已保存的密钥" aria-describedby="key-note"><div class="keyActions" id="key-actions" hidden><button id="key-delete" class="btn ghost" type="button">删除已保存的密钥</button></div><p id="key-note" class="fieldHint">密钥只写入本机配置，不会回显。留空会保留旧密钥，要彻底删除请点上面的按钮。</p></div>
 <div class="field"><span class="fieldLabel" id="balance-provider-label">余额查询服务商</span><div id="balance-provider-host"></div><p class="fieldHint" id="balance-provider-note">可选：选定后可用上面保存的密钥查询余额，不选则不查询。余额接口只有 DeepSeek 官方、opencode Go 与 commandcode 提供，且密钥必须属于所选服务商。</p><div class="testRow"><button id="balance-btn" class="btn ghost" type="button" disabled>查询余额</button><span id="balance-result" class="status" role="status" aria-live="polite"></span></div></div>
 <div class="testRow"><button id="test-btn" class="btn" type="button">测试连接</button><span id="test-result" class="status" role="status" aria-live="polite"></span></div>
+</div>
+<div class="testRow"><button id="codex-test-btn" class="btn" type="button">检查 Codex CLI</button><span id="codex-test-result" class="status" role="status" aria-live="polite"></span></div>
 </div>
 <p id="privacy" class="fineprint">所有配置与密钥仅保存在当前机器。</p>
 <div class="footer"><p class="status" id="status" role="status" aria-live="polite">正在读取本机设置…</p><button id="save" class="btn primary" type="submit" disabled>保存</button></div>
@@ -48,6 +53,15 @@ export const settingsPage = `<!doctype html>
 <section class="panel" id="panel-chat" role="tabpanel" aria-labelledby="tab-chat">
 <div class="pet-chat-host" id="pet-chat-root"></div>
 </section>
+<section class="panel" id="panel-task" role="tabpanel" aria-labelledby="tab-task" hidden><div class="scroll">
+<form id="codex-task-form" class="card">
+<h2 class="cardTitle">Codex 文件任务</h2><p class="cardHint">填写工作目录后提交。默认只读，勾选后允许修改该目录。</p>
+<div class="field"><label for="task-directory">工作目录</label><input id="task-directory" type="text" required placeholder="/Users/chaos/Projects/example"></div>
+<div class="field"><label for="task-prompt">任务内容</label><textarea id="task-prompt" required maxlength="16000" rows="6"></textarea></div>
+<div class="field"><label><input id="task-allow-edits" type="checkbox"> 允许修改工作目录</label></div>
+<div class="testRow"><button id="task-run" class="btn primary" type="submit">运行任务</button><button id="task-cancel" class="btn ghost" type="button" disabled>取消</button></div>
+<p id="task-status" class="status" role="status" aria-live="polite"></p><pre id="task-result" class="taskResult"></pre>
+</form></div></section>
 </div>
 </div>
 </main>

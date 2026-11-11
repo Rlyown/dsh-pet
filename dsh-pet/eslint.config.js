@@ -54,4 +54,17 @@ export default tseslint.config(
       'no-undef': 'off',
     },
   },
+  {
+    // Codex bridge scripts run as Node ESM and use Node's built-in fetch API.
+    files: ['codex/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        process: 'readonly',
+        fetch: 'readonly',
+        AbortSignal: 'readonly',
+        URLSearchParams: 'readonly',
+        setTimeout: 'readonly',
+      },
+    },
+  },
 );

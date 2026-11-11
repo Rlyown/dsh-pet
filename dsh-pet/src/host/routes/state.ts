@@ -16,6 +16,73 @@ export async function handleStateRoutes(deps: PetRouteDeps, input: RouteInput): 
   const { EXTERNAL_WORK_SESSION, ctx, nextExternalWorkSeq, publishWorkStatus, state, workStatus } = deps;
   const { body, method, rest, signal, url } = input;
 
+  // Standalone Codex observer only supplies quota windows already recorded by the local CLI.
+  if (rest === 'codex-usage') {
+    if (method !== 'POST') return methodNotAllowed();
+    const standalone = (ctx as { get?: (name: string, required?: boolean) => unknown }).get?.('standaloneAi', false);
+    if (!standalone) return failResult('unsupported', '仅独立模式支持 Codex 额度');
+    if (Buffer.byteLength(body ?? '', 'utf8') > 8 * 1024) return payloadTooLarge('body too large');
+    let raw: unknown;
+    try {
+      raw = JSON.parse(body ?? '');
+    } catch {
+      return invalidJson();
+    }
+    const windows = (raw as { windows?: unknown })?.windows;
+    if (!Array.isArray(windows) || windows.length === 0 || windows.length > 4)
+      return failResult('bad-request', '额度窗口无效');
+    const rows: Array<{ label: string; used: number; resetsAt?: number }> = [];
+    for (const value of windows) {
+      if (!value || typeof value !== 'object') return failResult('bad-request', '额度窗口无效');
+      const w = value as { windowLabel?: unknown; usedPercent?: unknown; resetsAt?: unknown; stale?: unknown };
+      if (
+        typeof w.windowLabel !== 'string' ||
+        w.windowLabel.length > 80 ||
+        typeof w.usedPercent !== 'number' ||
+        !Number.isFinite(w.usedPercent) ||
+        w.usedPercent < 0 ||
+        w.usedPercent > 100
+      )
+        return failResult('bad-request', '额度数值无效');
+      if (w.stale === true || (typeof w.resetsAt === 'number' && w.resetsAt * 1000 <= Date.now())) continue;
+      rows.push({
+        label: w.windowLabel,
+        used: w.usedPercent,
+        ...(typeof w.resetsAt === 'number' && Number.isFinite(w.resetsAt) ? { resetsAt: w.resetsAt } : {}),
+      });
+    }
+    if (rows.length === 0) {
+      state.writeSection('balance', {
+        ok: false,
+        provider: 'codex',
+        reason: 'fetch-error',
+        message: 'Codex 额度快照已过期；完成一次回复后再查看。',
+      });
+      return okResult({ ok: true });
+    }
+    const views = rows.map((row) => ({
+      tag: 'div' as const,
+      children: [
+        { tag: 'strong' as const, text: `Codex ${row.label}` },
+        { tag: 'div' as const, text: `已用 ${row.used.toFixed(0)}% · 剩余 ${(100 - row.used).toFixed(0)}%` },
+        {
+          tag: 'span' as const,
+          text: row.resetsAt ? `重置：${new Date(row.resetsAt * 1000).toLocaleString('zh-CN')}` : '重置时间未知',
+        },
+      ],
+    }));
+    state.writeSection('balance', {
+      ok: true,
+      provider: 'codex',
+      shape: 'custom',
+      data: {
+        views,
+        percent: Math.max(...rows.map((row) => row.used)),
+      },
+    });
+    return okResult({ ok: true });
+  }
+
   // 可选模型清单（设置页「AI 模型」下拉框数据源）：与 DSH 模型选择器同源，都来自宿主 llm 服务。
   // 只读、无副作用；某个服务商列模型失败（适配器不支持 / 网络）只让它空着，不拖垮整张清单。
   // 一个实时路由都没注册时回落到 listConfigurableProviders，免得下拉框空着。

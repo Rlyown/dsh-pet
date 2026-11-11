@@ -86,6 +86,7 @@ export function apply(ctx: any): void {
   const desktopHelper = createDesktopHelper({
     ctx,
     configPaths,
+    userRoot,
     effectivePetList,
     log,
     reportDownload,

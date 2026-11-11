@@ -22,7 +22,19 @@ try {
   );
   process.exit(3);
 }
-const { app, BrowserWindow, ipcMain, screen, shell, protocol, Tray, Menu, nativeImage, powerMonitor } = electronApi;
+const {
+  app,
+  BrowserWindow,
+  ipcMain,
+  screen,
+  shell,
+  protocol,
+  Tray,
+  Menu,
+  nativeImage,
+  powerMonitor,
+  globalShortcut,
+} = electronApi;
 const path = require('node:path');
 const fsPromises = require('node:fs/promises');
 // 点击穿透兜底通道的纯判定（不依赖 Electron 的 forward 鼠标钩子；见文件头）
@@ -51,6 +63,7 @@ const { createTray } = require('./main/tray.js');
 const { createWindows } = require('./main/windows.js');
 const { registerIpc } = require('./main/ipc.js');
 const { createDisplaySync } = require('./main/displays.js');
+const { registerPetVisibilityShortcut } = require('./main/visibility-shortcut.js');
 const { dshHomeDir, resolveUserDataDir } = require('./main/user-data.js');
 
 /** Linux 指针提供者：仅在 Linux 创建；查询失败时 get() 返回 null（调用方回退 Electron 原生 API） */
@@ -236,7 +249,11 @@ const tray = createTray({
   petRoute: PET_ROUTE,
   platform: TRAY_PLATFORM,
   helperDir: __dirname,
+  toggleVisibility: petWindows.toggleVisibility,
+  arePetsVisible: petWindows.areAnyVisible,
 });
+
+let disposePetVisibilityShortcut = () => {};
 
 /**
  * 应用模式的重建钩子：同进程里没有「重启 helper 进程」这条路，宿主改完显示位置会调它——
@@ -292,6 +309,16 @@ app.whenReady().then(() => {
 
   linuxPointer?.start();
   petWindows.create();
+  // Only the standalone Codex runtime owns this global shortcut; DSH keeps its own keymap.
+  disposePetVisibilityShortcut = registerPetVisibilityShortcut({
+    globalShortcut,
+    enabled: OPEN_TARGET === 'standalone',
+    accelerator:
+      process.env.DSH_PET_VISIBILITY_ACCELERATOR === undefined
+        ? undefined
+        : process.env.DSH_PET_VISIBILITY_ACCELERATOR,
+    toggleVisibility: petWindows.toggleVisibility,
+  });
 
   // 合盖/唤醒是任务栏按钮重建最集中的时刻：resume / unlock-screen 后把每只宠物重新摘一次。
   // powerMonitor 只能在 ready 之后使用，所以挂在这里而不是模块顶层。
@@ -319,6 +346,7 @@ app.whenReady().then(() => {
 // 退出时销毁托盘图标：不销毁会在 Windows 通知区留下「幽灵图标」（鼠标划过才消失）。
 // 宿主改 display 时是 SIGTERM/SIGKILL 硬杀，Windows 上拦不到，所以这条只覆盖优雅退出。
 app.on('before-quit', () => {
+  disposePetVisibilityShortcut();
   petWindows.stopTaskbarWatchdog();
   if (!tray.exists()) return;
   try {

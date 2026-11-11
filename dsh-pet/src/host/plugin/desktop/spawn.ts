@@ -8,6 +8,7 @@
 import { join } from 'node:path';
 import { ROUTE_SEGMENT } from '../../../shared/constants.ts';
 import { PACKAGE_ROOT } from '../../paths.ts';
+import { readDesktopShortcut } from '../../desktop-shortcut.ts';
 import type { DesktopHelperDeps } from './types.ts';
 import type { DesktopPets } from './pets.ts';
 import { toBridgeResponse } from './bridge-response.ts';
@@ -23,7 +24,7 @@ import {
 /** DesktopSpawn的输入。 */
 export type DesktopSpawnInput = Pick<
   DesktopHelperDeps,
-  'ctx' | 'getHandlePetRoute' | 'log' | 'reportDownload' | 'thumbUserRoot'
+  'ctx' | 'getHandlePetRoute' | 'log' | 'reportDownload' | 'thumbUserRoot' | 'userRoot'
 > &
   Pick<DesktopPets, 'getHasDesktopPet' | 'desktopPetList' | 'getTrayOn'>;
 
@@ -51,8 +52,17 @@ export function resolveOpenTarget(siteUrl: string, desktopHost: boolean): OpenTa
  * 创建 Helper 进程的拉起与停止句柄：进程内宿主直接跳过，其余按需下载 Electron 后 spawn 并退避重试。
  */
 export function createDesktopSpawn(deps: DesktopSpawnInput) {
-  const { ctx, getHandlePetRoute, log, reportDownload, thumbUserRoot, getHasDesktopPet, desktopPetList, getTrayOn } =
-    deps;
+  const {
+    ctx,
+    getHandlePetRoute,
+    log,
+    reportDownload,
+    thumbUserRoot,
+    userRoot,
+    getHasDesktopPet,
+    desktopPetList,
+    getTrayOn,
+  } = deps;
 
   let desktopModeEverActive = false;
 
@@ -67,6 +77,8 @@ export function createDesktopSpawn(deps: DesktopSpawnInput) {
   let displayWarned = false;
 
   let noDesktopSkipped = false;
+
+  let codexSandboxWarned = false;
 
   let portWaitAttempts = 0;
 
@@ -130,6 +142,7 @@ export function createDesktopSpawn(deps: DesktopSpawnInput) {
           //   web        = dsh web → DSH 站点
           DSH_PET_OPEN_TARGET: resolveOpenTarget(siteUrl, isDesktopHost()),
           DSH_PET_SCALE: '1',
+          DSH_PET_VISIBILITY_ACCELERATOR: readDesktopShortcut(userRoot) ?? '',
           // 打开 bridge 协议：main.js 注册 dsh-pet-bridge scheme，把渲染端请求经管道转给宿主
           DSH_PET_BRIDGE: '1',
           // 每只桌面宠物一个局部小窗口：透传宠物列表（[{id,size}]）
@@ -165,6 +178,18 @@ export function createDesktopSpawn(deps: DesktopSpawnInput) {
         noDesktopSkipped = true;
         log.info(
           `[dsh-pet] 无桌面宠物（display 均为 web/none）且无需保留托盘（tray=${getTrayOn()}），已跳过桌面 Helper 启动`,
+        );
+      }
+      return;
+    }
+    // Codex's macOS seatbelt sandbox prevents Electron from registering with AppKit/LaunchServices;
+    // Electron aborts before JavaScript runs. Do not enter the crash/restart loop. A standalone host
+    // launched outside Codex can still serve MCP requests and own the desktop window normally.
+    if (process.platform === 'darwin' && process.env.CODEX_SANDBOX === 'seatbelt') {
+      if (!codexSandboxWarned) {
+        codexSandboxWarned = true;
+        log.warn(
+          '[dsh-pet] Codex macOS sandbox blocks Electron AppKit registration; start dsh-pet standalone outside Codex to show desktop windows.',
         );
       }
       return;

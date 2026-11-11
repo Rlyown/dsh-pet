@@ -10,6 +10,11 @@ import { type IncomingMessage, type ServerResponse } from 'node:http';
 import { rejectRequest } from '../request-security.ts';
 import type { ModelDiscoveryInput } from '../ai-provider/types.ts';
 import { sendJson } from './respond.ts';
+import { isAbsolute, join } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { packageRoot } from '../../host/helper-process.ts';
+import { existsSync } from 'node:fs';
+import { dirname } from 'node:path';
 
 /** 读完请求体并解析成 JSON；空体当作空对象。 */
 async function readJsonBody(req: IncomingMessage): Promise<unknown> {
@@ -145,6 +150,65 @@ export function balanceHandler(
       sendJson(res, 200, await ai.queryBalance());
     } catch {
       sendJson(res, 200, { ok: false, provider: '', reason: 'fetch-error', message: '余额查询失败' });
+    }
+  };
+}
+
+/** Execute a user submitted Codex task inside the chosen directory. */
+export function codexTaskHandler(): (req: IncomingMessage, res: ServerResponse) => Promise<void> {
+  return async (req, res) => {
+    if (req.method !== 'POST') {
+      rejectRequest(res, 405, '仅支持 POST');
+      return;
+    }
+    let input: unknown;
+    try {
+      input = await readJsonBody(req);
+    } catch {
+      rejectRequest(res, 400, '任务格式无效');
+      return;
+    }
+    const data = input as { directory?: unknown; prompt?: unknown; allowEdits?: unknown };
+    if (
+      !data ||
+      typeof data !== 'object' ||
+      typeof data.directory !== 'string' ||
+      !isAbsolute(data.directory) ||
+      data.directory.length > 2048 ||
+      typeof data.prompt !== 'string' ||
+      !data.prompt.trim() ||
+      data.prompt.length > 16000 ||
+      typeof data.allowEdits !== 'boolean'
+    ) {
+      rejectRequest(res, 400, '请填写工作目录、任务和文件权限');
+      return;
+    }
+    const controller = new AbortController();
+    res.once('close', () => controller.abort());
+    try {
+      const root = existsSync(join(packageRoot, 'codex', 'bridge', 'cli.mjs')) ? packageRoot : dirname(packageRoot);
+      const moduleUrl = pathToFileURL(join(root, 'codex', 'bridge', 'cli.mjs')).href;
+      const { runCodex } = (await import(moduleUrl)) as {
+        runCodex: (options: {
+          prompt: string;
+          directory: string;
+          allowEdits: boolean;
+          signal: AbortSignal;
+        }) => Promise<string>;
+      };
+      const result = await runCodex({
+        prompt: data.prompt,
+        directory: data.directory,
+        allowEdits: data.allowEdits,
+        signal: controller.signal,
+      });
+      if (!res.destroyed) sendJson(res, 200, { ok: true, result });
+    } catch (error) {
+      if (!res.destroyed)
+        sendJson(res, 502, {
+          ok: false,
+          message: error instanceof Error ? error.message.slice(0, 800) : 'Codex 任务失败',
+        });
     }
   };
 }

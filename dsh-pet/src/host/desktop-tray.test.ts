@@ -39,6 +39,8 @@ function harness(options: {
   const bodies: string[] = [];
   const quits: string[] = [];
   const menus: MenuItem[][] = [];
+  const visibilityCalls: string[] = [];
+  let petsVisible = true;
 
   class FakeTray {
     setToolTip(): void {}
@@ -74,10 +76,15 @@ function harness(options: {
     petRoute: '/dsh-pet-7340',
     platform: { templateImage: false, leftClickPopsMenu: false },
     helperDir: '.',
+    toggleVisibility: () => {
+      petsVisible = !petsVisible;
+      visibilityCalls.push(petsVisible ? 'show' : 'hide');
+    },
+    arePetsVisible: () => petsVisible,
   };
 
   const tray = createTray(deps);
-  return { tray, requests, bodies, quits, menus };
+  return { tray, requests, bodies, quits, menus, visibilityCalls };
 }
 
 /** 取最后一次构建出来的菜单模板。 */
@@ -88,6 +95,18 @@ function lastMenu(menus: MenuItem[][]): MenuItem[] {
 }
 
 describe('createTray —— 勾选与点击', () => {
+  test('菜单栏显示/隐藏入口和全局快捷键共用同一切换动作', async () => {
+    const { tray, menus, visibilityCalls } = harness({ pets: [{ label: 'main', id: 'main', display: 'both' }] });
+    await tray.start();
+    const toggle = lastMenu(menus).find((item) => item.label?.includes('桌面宠物（'));
+    assert.equal(toggle?.label.includes('隐藏'), true);
+    assert.ok(toggle?.click);
+    toggle.click();
+    assert.deepEqual(visibilityCalls, ['hide']);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    assert.equal(lastMenu(menus).some((item) => item.label?.includes('显示桌面宠物（')), true);
+  });
+
   test('勾选状态来自配置：含 desktop / both 的两只被打勾', async () => {
     const { tray, menus } = harness({
       pets: [

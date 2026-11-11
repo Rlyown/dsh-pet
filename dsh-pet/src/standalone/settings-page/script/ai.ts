@@ -33,6 +33,8 @@ async function aiRequest(method, body) {
 }
 
 function populateAi(data) {
+  if (data.source !== undefined) byId('source').value = data.source;
+  updateSourceFields();
   if (data.protocol !== undefined && protocolSelect) protocolSelect.setValue(String(data.protocol));
   for (const id of ['baseUrl', 'model']) {
     if (data[id] !== undefined && byId(id)) byId(id).value = String(data[id]);
@@ -43,6 +45,13 @@ function populateAi(data) {
   byId('key-actions').hidden = data.hasKey !== true;
   byId('apiKey').value = '';
   byId('apiKey').disabled = false;
+}
+
+function updateSourceFields() {
+  const custom = byId('source').value === 'custom';
+  byId('custom-model-fields').hidden = !custom;
+  byId('codex-test-btn').hidden = custom;
+  byId('codex-test-result').hidden = custom;
 }
 
 /** 把余额结果翻成一行可读文案；失败一律说明原因，不显示伪造数字。 */
@@ -162,6 +171,7 @@ function wireSave(form, save, status) {
     save.disabled = true;
     setStatus(status, '正在保存到本机…');
     const input = {
+      source: byId('source').value,
       protocol: protocolSelect ? protocolSelect.getValue() : 'openai-compatible',
       baseUrl: byId('baseUrl').value.trim(),
       model: byId('model').value.trim(),
@@ -181,6 +191,16 @@ function wireSave(form, save, status) {
 }
 
 function wireAiPanel() {
+  byId('source').addEventListener('change', () => { updateSourceFields(); markDirty(true); });
+  byId('codex-test-btn').addEventListener('click', async () => {
+    const output = byId('codex-test-result');
+    try {
+      const response = await fetch(AI_TEST_URL, { method: 'POST', credentials: 'same-origin',
+        headers: { 'X-DSH-Pet-Token': TOKEN, 'Content-Type': 'application/json' }, body: '{}' });
+      const result = await response.json();
+      output.textContent = (result.ok ? '✓ ' : '✗ ') + result.message;
+    } catch { output.textContent = '✗ 无法检查 Codex CLI'; }
+  });
   wireModelPicker();
   const status = byId('status');
   wireKeyDelete(status);

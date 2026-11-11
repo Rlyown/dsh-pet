@@ -4,4 +4,6 @@
 
 安装与完整文档：**<https://github.com/PC2005-cloud/dsh-pet>**
 
+Codex 桌面集成（保留独立 Electron 桌宠与完整玩法）：[`codex/README.md`](codex/README.md)。
+
 许可：代码 MIT；素材禁止商用；二创在公开渠道须署名（同上链接）。

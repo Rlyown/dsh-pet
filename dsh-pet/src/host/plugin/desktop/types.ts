@@ -11,7 +11,7 @@ import type { HostContext } from '../context.ts';
 import type { RouteResult } from '../../http.ts';
 
 /** 桌面 Helper 生命周期的输入。 */
-export type DesktopHelperDeps = Pick<HostSetup, 'configPaths' | 'log' | 'thumbUserRoot'> &
+export type DesktopHelperDeps = Pick<HostSetup, 'configPaths' | 'log' | 'thumbUserRoot' | 'userRoot'> &
   Pick<BalancePoll, 'effectivePetList'> &
   Pick<DownloadReport, 'reportDownload'> & {
     /** 宿主上下文（apply 收到的那一个）。 */

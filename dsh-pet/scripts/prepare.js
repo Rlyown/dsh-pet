@@ -66,6 +66,12 @@ const keep = [
   'assets/main-character.png',
   'scripts/ensure-electron.mjs',
   'cordis.patch.yml',
+  // Codex loads the package root from its local plugin cache; include its root manifests with the built runtime.
+  'plugin.json',
+  'mcp.json',
+  'skills',
+  // Codex 插件包：独立 MCP server、会话观察器与 skill 随主 npm 包分发。
+  'codex',
 ];
 writeFileSync(PKG, JSON.stringify({ ...pkg, files: keep }, null, 2) + '\n', 'utf8');
 console.log(`[prepare] ✓ package.json files=[${keep.join(', ')}]`);

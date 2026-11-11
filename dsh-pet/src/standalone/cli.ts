@@ -9,6 +9,7 @@
  */
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import { flattenPetList, readAllConfig } from '../host/config.ts';
 import { dshHomeDir, packageRoot } from '../host/helper-process.ts';
@@ -88,10 +89,12 @@ async function run(logger: StandaloneLogger, options: { port: number }): Promise
   }
 
   let shuttingDown = false;
+  let stopCodexBridge: (() => Promise<void>) | undefined;
   const shutdown = async (reason: string): Promise<void> => {
     if (shuttingDown) return;
     shuttingDown = true;
     logger.info(`收尾（${reason}）…`);
+    await stopCodexBridge?.();
     // 先释放插件注册的 effect（停 Helper、清周期定时器），再关服务。
     try {
       await context.dispose();
@@ -115,6 +118,24 @@ async function run(logger: StandaloneLogger, options: { port: number }): Promise
 
   // 这一句里注册路由表、状态仓与桌面 Helper（含 bridge 管道）。
   apply(context.ctx);
+
+  // Read the same local Codex rollout stream as the Windows fork. This runs inside
+  // the already-started pet process, so it does not require Codex hook trust.
+  if (process.platform === 'darwin') {
+    try {
+      const bridgeUrl = pathToFileURL(join(packageRoot, 'codex', 'bridge', 'runtime.mjs')).href;
+      const bridge = (await import(bridgeUrl)) as {
+        startCodexBridge: (input: {
+          port: number;
+          token: string;
+          logger: StandaloneLogger;
+        }) => Promise<() => Promise<void>>;
+      };
+      stopCodexBridge = await bridge.startCodexBridge({ port: server.port, token: security.token, logger });
+    } catch (error) {
+      logger.warn(`Codex 会话观察器启动失败：${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
 
   let pets: Record<string, unknown>[] = [];
   let configSource = paths.userFile;

@@ -8,11 +8,40 @@
 import type { PetRouteDeps, RouteInput } from './types.ts';
 import type { RouteResult } from '../http.ts';
 import { failResult, methodNotAllowed, okResult } from './result.ts';
+import { isValidDesktopShortcut, readDesktopShortcut, writeDesktopShortcut } from '../desktop-shortcut.ts';
 
 /** 桌面端生命周期领域：未命中返回 undefined，命中返回应答。 */
 export async function handleDesktopRoutes(deps: PetRouteDeps, input: RouteInput): Promise<RouteResult | undefined> {
   const { log, optionalService, requestRestart } = deps;
-  const { method, rest } = input;
+  const { method, rest, body } = input;
+
+  // Codex MCP 通过此端点配置桌宠全局显示快捷键。设置文件与宠物数据同目录，写入后重启
+  // Helper，确保系统级注册表始终与 Codex 返回的配置一致。null 表示关闭快捷键。
+  if (rest === 'shortcut') {
+    if (method === 'GET') {
+      try {
+        return okResult({ accelerator: readDesktopShortcut(deps.userRoot) });
+      } catch (error) {
+        return failResult('generate-error', error instanceof Error ? error.message : String(error));
+      }
+    }
+    if (method !== 'PUT') return methodNotAllowed();
+    let value: { accelerator?: unknown };
+    try {
+      value = JSON.parse(body ?? '') as { accelerator?: unknown };
+    } catch {
+      return failResult('invalid-json', '请求体必须是 JSON');
+    }
+    if (value.accelerator !== null && !isValidDesktopShortcut(value.accelerator))
+      return failResult('bad-request', '快捷键格式无效；示例：Control+Alt+P');
+    try {
+      writeDesktopShortcut(deps.userRoot, value.accelerator as string | null);
+      void requestRestart();
+      return okResult({ accelerator: value.accelerator, reloading: true });
+    } catch (error) {
+      return failResult('generate-error', error instanceof Error ? error.message : String(error));
+    }
+  }
 
   // 桌面端「重载配置」（右键菜单 → POST /reload）：重启桌面 Helper，全部窗口按最新配置重建。
   // 与保存走同一条重启路径（requestRestart），宠物数量 / display / size 的变化同样生效——渲染端

@@ -79,6 +79,27 @@ export function createBalancePoll(deps: BalancePollInput) {
       // 独立模式自己选余额服务商、自己持密钥：它的 provider 不是聊天用的那个，
       // 也不能经 DSH 的 credential store 解析，所以优先走 standaloneAi 交出来的凭证。
       const standalone = standaloneAiBalance();
+      // With no separately configured balance provider, the Codex session observer
+      // supplies its real rate-limit windows. Do not overwrite that snapshot.
+      if (standalone && !standalone.provider) {
+        if (manual) {
+          const current = state.read().sections.balance.data as { provider?: string } | null;
+          state.writeSection(
+            'balance',
+            mark(
+              current?.provider === 'codex'
+                ? current
+                : {
+                    ok: false,
+                    provider: 'codex',
+                    reason: 'fetch-error',
+                    message: '尚未从 Codex 会话记录取得额度；在 Codex 完成一次回复后重试。',
+                  },
+            ),
+          );
+        }
+        return;
+      }
       const provider = standalone?.provider || ctx.agentDefaultModel.currentSelection().provider;
       const result = await queryBalance(
         provider,

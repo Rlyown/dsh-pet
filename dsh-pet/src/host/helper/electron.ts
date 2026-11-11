@@ -8,6 +8,7 @@
  */
 import { dirname, join, resolve } from 'node:path';
 import { existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { type LoggerLike } from '../log-file.ts';
 import { PACKAGE_ROOT } from '../paths.ts';
 import type { HelperOptions } from './child.ts';
@@ -20,6 +21,34 @@ export const defaultHelperMain = resolve(packageRoot, 'runtime', 'electron-helpe
 
 /** 桌面 Helper 的远程调试端口：0 = 不开。排障时本地改成 9222，重启 Helper 后用 chrome://inspect 连。 */
 export const DESKTOP_DEBUG_PORT = 0;
+
+/**
+ * Extract Electron when the optional native binding in extract-zip is unavailable in a
+ * flat Codex plugin cache. The platform tools ship with macOS/Windows; Linux uses unzip.
+ */
+function extractWithPlatformTool(zipPath: string, targetDir: string): void {
+  if (process.platform === 'darwin') {
+    execFileSync('/usr/bin/ditto', ['-x', '-k', zipPath, targetDir], { stdio: 'ignore' });
+    return;
+  }
+  if (process.platform === 'win32') {
+    execFileSync(
+      'powershell.exe',
+      [
+        '-NoProfile',
+        '-NonInteractive',
+        '-Command',
+        'Expand-Archive -LiteralPath $env:DSH_PET_ARCHIVE -DestinationPath $env:DSH_PET_DESTINATION -Force',
+      ],
+      {
+        env: { ...process.env, DSH_PET_ARCHIVE: zipPath, DSH_PET_DESTINATION: targetDir },
+        stdio: 'ignore',
+      },
+    );
+    return;
+  }
+  execFileSync('unzip', ['-q', zipPath, '-d', targetDir], { stdio: 'ignore' });
+}
 
 /** 强制 XWayland 的 Chromium 开关：Wayland 原生下小窗的定位/置顶/穿透都不可用。 */
 const OZONE_X11_SWITCH = '--ozone-platform=x11';
@@ -254,12 +283,17 @@ export async function ensureElectronDownload(options: EnsureElectronOptions = {}
       });
       const seconds = ((Date.now() - startedAt) / 1000).toFixed(1);
       info(`download complete (${seconds}s), extracting to ${targetDir} ...`, `下载完成（${seconds}s），正在解压`);
-      // 解压用官方 extract-zip（electron 43 官方安装同款）：纯 Node + native binding，跨平台一致，
-      // 正确处理 symlink 与文件权限，不需要系统 unzip/tar/powershell。
-      // 必须动态 import：该包是 N-API 原生模块，预编译产物没有 Android target，静态 import 会在模块
-      // 求值期就 throw，让只想用 Web 模式的用户整个 entry 激活失败；按需加载后失败只落进本函数 catch。
-      const { default: extract } = await import('@electron-internal/extract-zip');
-      await extract(zipPath, { dir: targetDir });
+      // Prefer Electron's extract-zip implementation. Codex plugin caches don't include
+      // node_modules and its optional N-API binary can't be bundled, so fall back to the
+      // host archive tool when that binding cannot load.
+      try {
+        const { default: extract } = await import('@electron-internal/extract-zip');
+        await extract(zipPath, { dir: targetDir });
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        warn(`extract-zip native binding unavailable (${reason}); trying the platform extractor`);
+        extractWithPlatformTool(zipPath, targetDir);
+      }
       if (!isNonEmptyFile(exe)) {
         throw new Error(`Electron zip extracted, but ${ELECTRON_REL} is missing, empty or not a regular file`);
       }

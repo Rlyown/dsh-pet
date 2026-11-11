@@ -13,6 +13,7 @@ import { discoverModels } from './list-models.ts';
 import { queryStandaloneBalance } from './balance.ts';
 import { createTextStream } from './stream.ts';
 import { testAiConnection } from './test-connection.ts';
+import { CODEX_MODEL, codexAvailable, createCodexStream } from './codex.ts';
 
 /**
  * 保存设置：单飞、先中止在途请求，失败即暂停，等下一次保存成功才恢复。
@@ -70,13 +71,12 @@ export function createStandaloneAi(
         !runtime.disposed &&
         !runtime.paused &&
         !runtime.saving &&
-        !!store.current().model &&
-        !!store.current().baseUrl &&
-        !!store.current().apiKey
+        (store.current().source === 'codex' ||
+          (!!store.current().model && !!store.current().baseUrl && !!store.current().apiKey))
       );
     },
   };
-  const modelOf = (): string => store.current().model;
+  const modelOf = (): string => (store.current().source === 'codex' ? CODEX_MODEL : store.current().model);
 
   return {
     currentSelection: () => ({ provider: PROVIDER, model: runtime.ready() ? modelOf() : '' }),
@@ -87,7 +87,8 @@ export function createStandaloneAi(
       runtime.ready() && !signal?.aborted && provider === PROVIDER && model === modelOf()
         ? { id: model, name: model }
         : undefined,
-    stream: createTextStream(runtime),
+    stream: (options) =>
+      store.current().source === 'codex' ? createCodexStream(runtime)(options) : createTextStream(runtime)(options),
     getSettings: () => store.publicSettings(),
     saveSettings: (input) => saveSettings(runtime, store, input),
     isReady: () => runtime.ready(),
@@ -95,7 +96,12 @@ export function createStandaloneAi(
     testConnection: (input) =>
       runtime.disposed
         ? Promise.resolve({ ok: false, message: '服务已关闭' })
-        : testAiConnection(runtime.fetcher, store.current(), input),
+        : store.current().source === 'codex'
+          ? codexAvailable().then((ok) => ({
+              ok,
+              message: ok ? '已找到 Codex CLI' : '未找到 Codex CLI，请先安装并登录',
+            }))
+          : testAiConnection(runtime.fetcher, store.current(), input),
     discoverModels: (input) =>
       runtime.disposed
         ? Promise.resolve({ ok: false, code: 'input', message: '服务已关闭' })

@@ -337,10 +337,31 @@ function createWindows({
     }
   }
 
+  /** Temporarily hide or restore every existing desktop pet window without changing config. */
+  function toggleVisibility() {
+    const live = [...windows.values()].filter((win) => !win.isDestroyed());
+    if (!live.length) return false;
+    const show = !live.some((win) => win.isVisible());
+    for (const win of live) {
+      if (show) win.showInactive();
+      else win.hide();
+    }
+    return show;
+  }
+
+  function areAnyVisible() {
+    for (const win of windows.values()) {
+      if (!win.isDestroyed() && win.isVisible()) return true;
+    }
+    return false;
+  }
+
   return {
     state: { windows, lastRequestedBounds, winMargins, windowIgnore, inputBusy, inputRegions, offBodyMs, petStates },
     create: createPetWindows,
     closeAll: closeAllPetWindows,
+    toggleVisibility,
+    areAnyVisible,
     geometry: deskGeometry,
     setWindowIgnore,
     updatePetState,

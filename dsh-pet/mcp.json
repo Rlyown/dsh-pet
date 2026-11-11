@@ -1,0 +1,11 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "dsh-pet": {
+      "type": "stdio",
+      "command": "node",
+      "cwd": "${PLUGIN_ROOT}",
+      "args": ["${PLUGIN_ROOT}/codex/mcp/server.mjs"]
+    }
+  }
+}

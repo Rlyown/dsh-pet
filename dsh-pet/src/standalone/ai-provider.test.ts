@@ -9,6 +9,7 @@ import { DEFAULT_AI_SETTINGS } from './ai-config.ts';
 
 const silent = { info() {}, warn() {}, error() {}, debug() {} };
 const config = {
+  source: 'custom' as const,
   protocol: 'openai-compatible',
   baseUrl: 'https://example.test/v1',
   model: 'test-model',
@@ -37,6 +38,7 @@ test('disabled model selection cannot be overridden; metadata and saves make no 
     },
   });
   try {
+    await ai.saveSettings({ source: 'custom' });
     assert.deepEqual(ai.currentSelection(), { provider: 'standalone', model: '' });
     assert.deepEqual(ai.listProviders(), []);
     assert.deepEqual(await ai.listModels('standalone'), []);

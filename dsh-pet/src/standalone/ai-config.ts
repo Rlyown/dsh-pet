@@ -17,6 +17,8 @@ export const BALANCE_PROVIDERS = ['', 'deepseek-official', 'opencode-go', 'comma
 
 /** 对外可见的设置视图：密钥只以 hasKey 表示；AI 是否可用只看地址、模型与密钥是否齐全。 */
 export interface StandaloneAiPublicSettings {
+  /** 宠物生成通道；默认使用本机已登录的 Codex CLI。 */
+  source: 'codex' | 'custom';
   /** 接口协议，仅支持 OpenAI 兼容与 Anthropic 两种。 */
   protocol: 'openai-compatible' | 'anthropic';
   /** 服务商接口地址，为空表示尚未配置。 */
@@ -45,6 +47,7 @@ export type StandaloneAiSettings = Omit<StandaloneAiPublicSettings, 'hasKey'> & 
 
 /** 默认成品配置；未配置时 AI 保持关闭。 */
 export const DEFAULT_AI_SETTINGS: Readonly<StandaloneAiSettings> = Object.freeze({
+  source: 'codex',
   protocol: 'openai-compatible',
   baseUrl: '',
   model: '',
@@ -83,6 +86,7 @@ function containsControlChar(s: string): boolean {
 
 /** 成品配置的字段契约：长度、范围与字符集在这里一次定死。 */
 const fields = {
+  source: z.enum(['codex', 'custom']),
   protocol: z.enum(['openai-compatible', 'anthropic']),
   baseUrl: z.string().max(2048).refine(safeEndpoint),
   model: z
@@ -160,7 +164,20 @@ export function createAiConfig(home: string): AiConfigStore {
     // 旧配置文件没有后加的字段，先铺默认值再校验；否则升级后 strict 校验会拒绝整个文件，独立模式起不来。
     if (loaded !== undefined)
       settings = Object.freeze(
-        validateSettings(persistedSchema.parse({ ...DEFAULT_AI_SETTINGS, ...loaded }), DEFAULT_AI_SETTINGS),
+        validateSettings(
+          persistedSchema.parse({
+            ...DEFAULT_AI_SETTINGS,
+            ...loaded,
+            source:
+              (loaded as Partial<StandaloneAiSettings>).source ??
+              ((loaded as Partial<StandaloneAiSettings>).baseUrl &&
+              (loaded as Partial<StandaloneAiSettings>).model &&
+              (loaded as Partial<StandaloneAiSettings>).apiKey
+                ? 'custom'
+                : 'codex'),
+          }),
+          DEFAULT_AI_SETTINGS,
+        ),
       );
   } catch {
     // 读取失败说明无法确认文件权限，宁可整体失败。

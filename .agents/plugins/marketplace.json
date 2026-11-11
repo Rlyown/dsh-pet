@@ -1,0 +1,20 @@
+{
+  "name": "dsh-pet-local",
+  "interface": {
+    "displayName": "dsh-pet local"
+  },
+  "plugins": [
+    {
+      "name": "dsh-pet-codex",
+      "source": {
+        "source": "local",
+        "path": "./dsh-pet"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
