@@ -18,7 +18,9 @@ function registerPetVisibilityShortcut({
       return () => {};
     }
   } catch (error) {
-    log(`[dsh-pet] shortcut ${accelerator} registration failed: ${error instanceof Error ? error.message : String(error)}`);
+    log(
+      `[dsh-pet] shortcut ${accelerator} registration failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
     return () => {};
   }
   return () => globalShortcut.unregister(accelerator);

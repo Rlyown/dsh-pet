@@ -8,9 +8,33 @@ export const DEFAULT_DESKTOP_SHORTCUT = 'Control+Alt+P';
 const FILE_NAME = 'desktop-shortcut.json';
 const MODIFIERS = new Set(['Command', 'Cmd', 'Control', 'Ctrl', 'Alt', 'Option', 'Shift', 'Super', 'Meta']);
 const NAMED_KEYS = new Set([
-  'Space', 'Tab', 'Capslock', 'Numlock', 'Scrolllock', 'Backspace', 'Delete', 'Insert', 'Return', 'Enter',
-  'Up', 'Down', 'Left', 'Right', 'Home', 'End', 'PageUp', 'PageDown', 'Escape', 'Esc', 'VolumeUp',
-  'VolumeDown', 'VolumeMute', 'MediaNextTrack', 'MediaPreviousTrack', 'MediaStop', 'MediaPlayPause',
+  'Space',
+  'Tab',
+  'Capslock',
+  'Numlock',
+  'Scrolllock',
+  'Backspace',
+  'Delete',
+  'Insert',
+  'Return',
+  'Enter',
+  'Up',
+  'Down',
+  'Left',
+  'Right',
+  'Home',
+  'End',
+  'PageUp',
+  'PageDown',
+  'Escape',
+  'Esc',
+  'VolumeUp',
+  'VolumeDown',
+  'VolumeMute',
+  'MediaNextTrack',
+  'MediaPreviousTrack',
+  'MediaStop',
+  'MediaPlayPause',
 ]);
 
 export function isValidDesktopShortcut(value: unknown): value is string {

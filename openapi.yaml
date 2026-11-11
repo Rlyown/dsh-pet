@@ -291,6 +291,67 @@ paths:
         "405":
           $ref: "#/components/responses/MethodNotAllowed"
 
+  /dsh-pet-7340/codex-usage:
+    post:
+      tags: [Action]
+      operationId: publishCodexUsage
+      summary: 写入本机 Codex 额度窗口快照
+      description: |
+        独立模式的本机会话观察器读取 Codex CLI 日志中的 `rate_limits`，经此端点
+        写入 `sections.balance`。只接受实际观测到的使用百分比；过期窗口不展示，
+        不从 token 数推算账户余额。DSH 宿主模式不支持此端点。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [windows]
+              properties:
+                windows:
+                  type: array
+                  minItems: 1
+                  maxItems: 4
+                  items:
+                    type: object
+                    required: [windowLabel, usedPercent]
+                    properties:
+                      windowLabel:
+                        type: string
+                        maxLength: 80
+                      usedPercent:
+                        type: number
+                        minimum: 0
+                        maximum: 100
+                      resetsAt:
+                        type: number
+                        description: Unix 秒时间戳；过期窗口被忽略。
+                      stale:
+                        type: boolean
+      responses:
+        "200":
+          description: 快照已写入，或返回业务失败原因。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/OkResponse"
+                  - $ref: "#/components/schemas/FailureResponse"
+        "400":
+          description: 请求体不是合法 JSON。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailureResponse"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+        "413":
+          description: 请求体超过 8 KiB。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailureResponse"
+
   /dsh-pet-7340/balance:
     post:
       tags: [Action]
@@ -2211,6 +2272,65 @@ paths:
                         type: array
                         items:
                           $ref: "#/components/schemas/Provider"
+                  - $ref: "#/components/schemas/FailureResponse"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+
+  /dsh-pet-7340/shortcut:
+    get:
+      tags: [Config]
+      operationId: getDesktopShortcut
+      summary: 读取桌面宠物窗口显示快捷键
+      description: |
+        返回 Electron 进程内的窗口显示快捷键；`null` 表示关闭。
+        macOS 快捷指令中负责启动或关闭进程的全局热键独立于本设置。
+      responses:
+        "200":
+          description: 当前快捷键，或配置读取失败原因。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    required: [accelerator]
+                    properties:
+                      accelerator:
+                        type: [string, "null"]
+                  - $ref: "#/components/schemas/FailureResponse"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+    put:
+      tags: [Config]
+      operationId: setDesktopShortcut
+      summary: 设置桌面宠物窗口显示快捷键
+      description: |
+        保存 Electron accelerator 并请求重启桌面 Helper；传 `null` 关闭进程内热键。
+        有效字符串由修饰键加主键组成，例如 `Control+Alt+P`。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [accelerator]
+              properties:
+                accelerator:
+                  type: [string, "null"]
+      responses:
+        "200":
+          description: 已保存并请求重启，或返回业务失败原因。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    required: [accelerator, reloading]
+                    properties:
+                      accelerator:
+                        type: [string, "null"]
+                      reloading:
+                        type: boolean
+                        const: true
                   - $ref: "#/components/schemas/FailureResponse"
         "405":
           $ref: "#/components/responses/MethodNotAllowed"

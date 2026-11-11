@@ -22,19 +22,8 @@ try {
   );
   process.exit(3);
 }
-const {
-  app,
-  BrowserWindow,
-  ipcMain,
-  screen,
-  shell,
-  protocol,
-  Tray,
-  Menu,
-  nativeImage,
-  powerMonitor,
-  globalShortcut,
-} = electronApi;
+const { app, BrowserWindow, ipcMain, screen, shell, protocol, Tray, Menu, nativeImage, powerMonitor, globalShortcut } =
+  electronApi;
 const path = require('node:path');
 const fsPromises = require('node:fs/promises');
 // 点击穿透兜底通道的纯判定（不依赖 Electron 的 forward 鼠标钩子；见文件头）
@@ -314,9 +303,7 @@ app.whenReady().then(() => {
     globalShortcut,
     enabled: OPEN_TARGET === 'standalone',
     accelerator:
-      process.env.DSH_PET_VISIBILITY_ACCELERATOR === undefined
-        ? undefined
-        : process.env.DSH_PET_VISIBILITY_ACCELERATOR,
+      process.env.DSH_PET_VISIBILITY_ACCELERATOR === undefined ? undefined : process.env.DSH_PET_VISIBILITY_ACCELERATOR,
     toggleVisibility: petWindows.toggleVisibility,
   });
 

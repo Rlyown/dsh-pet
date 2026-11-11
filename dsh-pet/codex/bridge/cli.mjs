@@ -6,12 +6,34 @@ import { clearTimeout } from 'node:timers';
 
 const bundled = '/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex';
 const CHAT_DISABLED_FEATURES = [
-  'shell_tool', 'unified_exec', 'code_mode', 'apps', 'plugins', 'hooks',
-  'browser_use', 'in_app_browser', 'computer_use', 'image_generation', 'view_image',
-  'multi_agent', 'multi_agent_v2', 'memories', 'workspace_dependencies', 'shell_snapshot',
-  'skill_search', 'sleep_tool', 'goals',
+  'shell_tool',
+  'unified_exec',
+  'code_mode',
+  'apps',
+  'plugins',
+  'hooks',
+  'browser_use',
+  'in_app_browser',
+  'computer_use',
+  'image_generation',
+  'view_image',
+  'multi_agent',
+  'multi_agent_v2',
+  'memories',
+  'workspace_dependencies',
+  'shell_snapshot',
+  'skill_search',
+  'sleep_tool',
+  'goals',
 ];
-const TOOL_TYPES = new Set(['command_execution', 'mcp_tool_call', 'web_search', 'file_change', 'tool_call', 'collab_tool_call']);
+const TOOL_TYPES = new Set([
+  'command_execution',
+  'mcp_tool_call',
+  'web_search',
+  'file_change',
+  'tool_call',
+  'collab_tool_call',
+]);
 
 export function codexBinary() {
   if (process.env.CODEX_CLI_PATH && existsSync(process.env.CODEX_CLI_PATH)) return process.env.CODEX_CLI_PATH;
@@ -37,9 +59,17 @@ export async function runCodex({ prompt, directory, allowEdits = false, signal, 
   ];
   if (threadSource === 'pet-chat') {
     args.push(
-      '--json', '--thread-source', 'pet-chat', '--color', 'never',
-      '-c', 'approval_policy="never"', '-c', 'web_search="disabled"',
-      '-c', 'project_doc_max_bytes=0',
+      '--json',
+      '--thread-source',
+      'pet-chat',
+      '--color',
+      'never',
+      '-c',
+      'approval_policy="never"',
+      '-c',
+      'web_search="disabled"',
+      '-c',
+      'project_doc_max_bytes=0',
       ...CHAT_DISABLED_FEATURES.flatMap((feature) => ['--disable', feature]),
     );
   }
@@ -53,15 +83,23 @@ export async function runCodex({ prompt, directory, allowEdits = false, signal, 
   const limit = 256 * 1024;
   const parseEvent = (line) => {
     let event;
-    try { event = JSON.parse(line); } catch { return; }
+    try {
+      event = JSON.parse(line);
+    } catch {
+      return;
+    }
     if (event.item && TOOL_TYPES.has(event.item.type)) {
       attemptedTool = true;
       child.kill('SIGTERM');
     }
-    if (event.type === 'item.completed' && event.item?.type === 'agent_message' &&
-        !['commentary', 'analysis'].includes(event.item.phase) &&
-        !['commentary', 'analysis'].includes(event.item.channel) &&
-        typeof event.item.text === 'string') answer = event.item.text.trim();
+    if (
+      event.type === 'item.completed' &&
+      event.item?.type === 'agent_message' &&
+      !['commentary', 'analysis'].includes(event.item.phase) &&
+      !['commentary', 'analysis'].includes(event.item.channel) &&
+      typeof event.item.text === 'string'
+    )
+      answer = event.item.text.trim();
   };
   child.stdout.setEncoding('utf8').on('data', (chunk) => {
     stdout += chunk;
